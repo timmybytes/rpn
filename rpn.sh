@@ -31,27 +31,66 @@
 #                * Do not publish your work on the internet.
 #============================================================================
 
-# echo -n "> "
-# read -a STACK
+set -e
+set -o pipefail
 
-# while [[ $STACK ]]; do
-#   for i in "${STACK[*]}"; do
-#     echo "${STACK[$i]}"
+# Piped Input
+#============================================================================
+# if [ -p /dev/stdin ]; then
+# read -s piped
+# echo $piped
+# STACK=("${STACK[@]}" $piped)
+# echo -n "${STACK[@]}"
+# if [ "$piped" == "+" ]; then
+#   for i in "${STACK[@]}"; do
+#     ((a += i))
+#     STACK=("$a")
 #   done
-#   echo "${STACK[*]}"
-#   echo -n "${STACK[@]} > "
-#   read -a MORE
-#   STACK+=("$MORE")
-# done
+#   echo -n "${STACK[@]}" "> "
+# elif ! [[ "$piped" =~ ^[0-9]+$ ]]; then
+#   echo -en "Sorry, integers only!\n> "
+#   continue
+# else
+#   STACK=("${STACK[@]}" $piped)
+#   echo -n "${STACK[@]}" "> "
+# fi
+# fi
 
-echo "Enter one or more numbers separated by a space"
+# Regular Usage
+#============================================================================
+# echo "Enter one or more numbers separated by a space"
+
 echo -n "> "
 while read line; do
-  if [ "$line" == "+" ]; then
+  line="${line#"${line%%[!0]*}"}"
+  # case $line in
+  # +)
+  #   for i in "${STACK[@]}"; do
+  #     ((a += i))
+  #     STACK=("$a")
+  #   done
+  #   echo -n "${STACK[@]}" "> "
+  #   ;;
+  # esac
+  if [ -p /dev/stdin ]; then
+    read -s piped
+    STACK=("${STACK[@]}" $piped)
+    echo -n ""
+  elif [ "$line" == "+" ]; then
     for i in "${STACK[@]}"; do
       ((a += i))
       STACK=("$a")
     done
+  elif [ "$line" == "-" ]; then
+    # difference=$(${STACK[-1]} - ${STACK[-2]})
+    let "diff=${STACK[-1]} - ${STACK[-2]}"
+
+    STACK=("${STACK[@]}" $diff)
+    # ${STACK[-1] - ${STACK[-2]
+    # for i in "${STACK[@]}"; do
+    #   ((a -= i))
+    #   STACK=("$a")
+    # done
     echo -n "${STACK[@]}" "> "
   elif ! [[ "$line" =~ ^[0-9]+$ ]]; then
     echo -en "Sorry, integers only!\n> "
