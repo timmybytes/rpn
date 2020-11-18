@@ -31,6 +31,7 @@
 #                * Do not publish your work on the internet.
 #============================================================================
 
+# Exit on error
 set -e
 set -o pipefail
 
@@ -62,6 +63,7 @@ set -o pipefail
 
 echo -n "> "
 while read line; do
+  # Strip leading 0s
   line="${line#"${line%%[!0]*}"}"
   # case $line in
   # +)
@@ -75,7 +77,7 @@ while read line; do
   if [ -p /dev/stdin ]; then
     read -s piped
     STACK=("${STACK[@]}" $piped)
-    echo -n ""
+    # echo -n ""
   elif [ "$line" == "+" ]; then
     for i in "${STACK[@]}"; do
       ((a += i))
