@@ -1,15 +1,94 @@
 #!/usr/bin/env bash
 
+# Exit on error
+# set -e
+# set -o pipefail
+
+# Piped Input
+#============================================================================
+# if [ -p /dev/stdin ]; then
+# read -s piped
+# echo $piped
+# STACK=("${STACK[@]}" $piped)
+# echo -n "${STACK[@]}"
+# if [ "$piped" == "+" ]; then
+#   for i in "${STACK[@]}"; do
+#     ((a += i))
+#     STACK=("$a")
+#   done
+#   echo -n "${STACK[@]}" "> "
+# elif ! [[ "$piped" =~ ^[0-9]+$ ]]; then
+#   echo -en "Sorry, integers only!\n> "
+#   continue
+# else
+#   STACK=("${STACK[@]}" $piped)
+#   echo -n "${STACK[@]}" "> "
+# fi
+# fi
+
+# Regular Usage
+#============================================================================
+# echo "Enter one or more numbers separated by a space"
+
+# First Draft of RPN
+# echo -n "> "
+# while read line; do
+#   # Strip leading 0s
+#   line="${line#"${line%%[!0]*}"}"
+#   # case $line in
+#   # +)
+#   #   for i in "${STACK[@]}"; do
+#   #     ((a += i))
+#   #     STACK=("$a")
+#   #   done
+#   #   echo -n "${STACK[@]}" "> "
+#   #   ;;
+#   # esac
+#   if [ -p /dev/stdin ]; then
+#     read -s piped
+#     STACK=("${STACK[@]}" $piped)
+#     # echo -n ""
+#   elif [ "$line" == "+" ]; then
+#     for i in "${STACK[@]}"; do
+#       ((a += i))
+#       STACK=("$a")
+#     done
+#   elif [ "$line" == "-" ]; then
+#     # difference=$(${STACK[-1]} - ${STACK[-2]})
+#     let "diff=${STACK[-1]} - ${STACK[-2]}"
+
+#     STACK=("${STACK[@]}" $diff)
+#     # ${STACK[-1] - ${STACK[-2]
+#     # for i in "${STACK[@]}"; do
+#     #   ((a -= i))
+#     #   STACK=("$a")
+#     # done
+#     echo -n "${STACK[@]}" "> "
+#   elif ! [[ "$line" =~ ^[0-9]+$ ]]; then
+#     echo -en "Sorry, integers only!\n> "
+#     continue
+#   else
+#     STACK=("${STACK[@]}" $line)
+#     echo -n "${STACK[@]}" "> "
+#   fi
+# done
+
+# echo ${STACK[@]}
+
 QUIT="q"
 NUM="^[0-9]+$"
 OPERATOR="^[-+*\/]+$"
 STACK=()
 
+function help() {
+  printf "REPONO v${VERSION}"
+}
+
 function is_number() {
   if [[ "${1}" =~ $NUM ]]; then
-    stripped="${1#"${1%%[!0]*}"}"
-    STACK+=("${stripped}") || STACK+=("${1}")
-    echo -n "${STACK[@]}" "> "
+    # Trim leading 0s before adding to STACK
+    strip="${1#"${1%%[!0]*}"}"
+    STACK+=("${strip}") || STACK+=("${1}")
     shift
   fi
 }
@@ -24,30 +103,27 @@ function parse_input() {
       exit
       ;;
     "+")
-      OPERATOR="+"
-      ADDED=$(("${STACK[0]}" + "${STACK[1]}"))
-      STACK=("${STACK[@]:1}")
+      ADD=$(("${STACK[0]}" + "${STACK[1]}"))
       STACK=("${STACK[@]:2}")
-      STACK=($ADDED "${STACK[@]}")
-      echo -n "${STACK[@]}" "> "
+      STACK=($ADD "${STACK[@]}")
       shift
       ;;
     "-")
-      OPERATOR="-"
-      echo "Subtraction: $OPERATOR"
-      echo -n "${STACK[@]}" "> "
+      SUB=$(("${STACK[0]}" - "${STACK[1]}"))
+      STACK=("${STACK[@]:2}")
+      STACK=($SUB "${STACK[@]}")
       shift
       ;;
-    "*")
-      OPERATOR="*"
-      echo "Multiplication: $OPERATOR"
-      echo -n "${STACK[@]}" "> "
+    "^")
+      MLP=$(("${STACK[0]}" * "${STACK[1]}"))
+      STACK=("${STACK[@]:2}")
+      STACK=($MLP "${STACK[@]}")
       shift
       ;;
     "/")
-      OPERATOR="/"
-      echo "Division: $OPERATOR"
-      echo -n "${STACK[@]}" "> "
+      DIV=$(("${STACK[0]}" / "${STACK[1]}"))
+      STACK=("${STACK[@]:2}")
+      STACK=($DIV "${STACK[@]}")
       shift
       ;;
     *)
@@ -55,6 +131,7 @@ function parse_input() {
       ;;
     esac
   done
+  echo -n "${STACK[@]}" "> "
 }
 
 echo -n "> "

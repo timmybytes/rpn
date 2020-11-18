@@ -1,4 +1,4 @@
-#!/bin/bash -
+#!/usr/bin/env bash
 # title          :rpn.sh
 # description    :A Reverse Polish Notation calculator
 # author         :Timothy Merritt
@@ -31,76 +31,77 @@
 #                * Do not publish your work on the internet.
 #============================================================================
 
-# Exit on error
-set -e
-set -o pipefail
+quit="q"
+num="^[0-9]+$"
+STACK=()
 
-# Piped Input
-#============================================================================
-# if [ -p /dev/stdin ]; then
-# read -s piped
-# echo $piped
-# STACK=("${STACK[@]}" $piped)
-# echo -n "${STACK[@]}"
-# if [ "$piped" == "+" ]; then
-#   for i in "${STACK[@]}"; do
-#     ((a += i))
-#     STACK=("$a")
-#   done
-#   echo -n "${STACK[@]}" "> "
-# elif ! [[ "$piped" =~ ^[0-9]+$ ]]; then
-#   echo -en "Sorry, integers only!\n> "
-#   continue
-# else
-#   STACK=("${STACK[@]}" $piped)
-#   echo -n "${STACK[@]}" "> "
-# fi
-# fi
+function help() {
+  printf "rpn v${VERSION}"
+}
 
-# Regular Usage
-#============================================================================
-# echo "Enter one or more numbers separated by a space"
+function is_number() {
+  if [[ "${1}" =~ $num ]]; then
+    # Trim leading 0s before adding to STACK
+    strip="${1#"${1%%[!0]*}"}"
+    STACK+=("${strip}") || STACK+=("${1}")
+    shift
+  fi
+}
+
+function calc() {
+  op=$1
+  if [ "$op" = "^" ]; then
+    op="*"
+  fi
+  int_1=${STACK[0]}
+  int_2=${STACK[1]}
+  result=$(echo "${int_1} $op ${int_2}" | bc -l 2>/dev/null | sed '/\./ s/\.\{0,1\}0\{1,\}$//')
+  STACK=("${STACK[@]:2}")
+  STACK=($result "${STACK[@]}")
+}
+
+function check_stack() {
+  if [ "${#STACK[@]}" -lt "2" ]; then
+    echo "Enter more numbers to calculate"
+  else
+    calc "$key"
+  fi
+}
+
+function parse_input() {
+  while [[ $# -gt 0 ]]; do
+    is_number "$1"
+    key="$1"
+    case $key in
+    "$quit")
+      echo "Quitting..."
+      exit
+      ;;
+    "+")
+      check_stack
+      shift
+      ;;
+    "-")
+      check_stack
+      shift
+      ;;
+    "^")
+      check_stack
+      shift
+      ;;
+    "/")
+      check_stack
+      shift
+      ;;
+    *)
+      shift
+      ;;
+    esac
+  done
+  echo -n "${STACK[@]}" "> "
+}
 
 echo -n "> "
-while read line; do
-  # Strip leading 0s
-  line="${line#"${line%%[!0]*}"}"
-  # case $line in
-  # +)
-  #   for i in "${STACK[@]}"; do
-  #     ((a += i))
-  #     STACK=("$a")
-  #   done
-  #   echo -n "${STACK[@]}" "> "
-  #   ;;
-  # esac
-  if [ -p /dev/stdin ]; then
-    read -s piped
-    STACK=("${STACK[@]}" $piped)
-    # echo -n ""
-  elif [ "$line" == "+" ]; then
-    for i in "${STACK[@]}"; do
-      ((a += i))
-      STACK=("$a")
-    done
-  elif [ "$line" == "-" ]; then
-    # difference=$(${STACK[-1]} - ${STACK[-2]})
-    let "diff=${STACK[-1]} - ${STACK[-2]}"
-
-    STACK=("${STACK[@]}" $diff)
-    # ${STACK[-1] - ${STACK[-2]
-    # for i in "${STACK[@]}"; do
-    #   ((a -= i))
-    #   STACK=("$a")
-    # done
-    echo -n "${STACK[@]}" "> "
-  elif ! [[ "$line" =~ ^[0-9]+$ ]]; then
-    echo -en "Sorry, integers only!\n> "
-    continue
-  else
-    STACK=("${STACK[@]}" $line)
-    echo -n "${STACK[@]}" "> "
-  fi
+while read INPUT; do
+  parse_input $INPUT
 done
-
-echo ${STACK[@]}
