@@ -31,6 +31,23 @@
 #                * Do not publish your work on the internet.
 #============================================================================
 
+# * README
+# * round
+# * factorial
+# * factorial
+# * while getopts u:d:p:f: option
+#   do
+#   case "${option}"
+#   in
+#   u) USER=${OPTARG};;
+#   d) DATE=${OPTARG};;
+#   p) PRODUCT=${OPTARG};;
+#   f) FORMAT=${OPTARG};;
+#   esac
+#   done
+
+VERSION=0.1.0
+
 num="[-+]?[0-9]*\.?[0-9]+"
 STACK=()
 
@@ -38,17 +55,44 @@ function help() {
   printf "rpn v${VERSION}"
 }
 
+function usage() {
+  local txt=(
+    "┌──────────────────────────────────────────────────────────────┐"
+    "│                                                              │"
+    "│         rpn - Reverse Polih Notation Calculator v${VERSION}       │"
+    "│                                                              │"
+    "│ USAGE:                                                       │"
+    "│                                                              │"
+    "│  rpn                          Launch in interactive mode     │"
+    "│  rpn [expression]             Evaluate a one-line expression │"
+    "│                                                              │"
+    "│ RC FILE                                                      │"
+    "│                                                              │"
+    "│  rpn will execute the contents of ~/.rpnrc at startup if it  │"
+    "│  exists.                                                     │"
+    "│                                                              │"
+    "│ EXAMPLES                                                     │"
+    "│                                                              │"
+    "│  rpn 1 2 + 3 + 4 + 5 +              => 15                    │"
+    "│  rpn pi cos                         => -1.0                  │"
+    "│  rpn                                => interactive mode      │"
+    "│                                                              │"
+    "└──────────────────────────────────────────────────────────────┘"
+  )
+
+  printf "%s\n" "${txt[@]}"
+}
+
 function is_number() {
-  # if [[ "${1}" -eq "" ]]; then
-  #   echo "ZERO"
-  #   shift
-  # fi
-  if [[ "${1}" =~ $num ]]; then
-    # Trim leading 0s before adding to STACK
-    strip="${1#"${1%%[!0]*}"}"
-    STACK+=("${strip}") || STACK+=("${1}")
+  # Trim leading 0s
+  strip="${1#"${1%%[!0]*}"}"
+  if [[ "${strip}" =~ "0" ]]; then
     shift
-  fi
+  fi &&
+    if [[ "${strip}" =~ $num ]]; then
+      STACK+=("${strip}") || STACK+=("${1}")
+      shift
+    fi
 }
 
 function calc() {
@@ -76,7 +120,9 @@ function calc() {
 
 function check_stack() {
   if [ "${#STACK[@]}" -lt "2" ] && [ "$1" != "++" ] && [ "$1" != "--" ]; then
-    echo "Enter more numbers to calculate"
+    echo "Enter more numbers to calculate, or use"
+    echo "a valid unary operator. Type 'help' for"
+    echo "more information."
   else
     calc "$key"
   fi
@@ -87,6 +133,58 @@ function clear_stack() {
 }
 
 function parse_input() {
+  while [[ $# -gt 0 ]]; do
+    is_number "$1"
+    key="$1"
+    case $key in
+    "q" | "Q" | "quit" | "exit")
+      exit
+      ;;
+    "usage")
+      usage
+      shift
+      ;;
+    "+")
+      check_stack
+      shift
+      ;;
+    "-")
+      check_stack
+      shift
+      ;;
+    "^")
+      check_stack
+      shift
+      ;;
+    "/")
+      check_stack
+      shift
+      ;;
+    "%")
+      check_stack
+      shift
+      ;;
+    "++")
+      check_stack "$key"
+      shift
+      ;;
+    "--")
+      check_stack "$key"
+      shift
+      ;;
+    "clr")
+      clear_stack
+      shift
+      ;;
+    *)
+      shift
+      ;;
+    esac
+  done
+  echo -n "${STACK[@]}" "> "
+}
+
+function parse_args() {
   while [[ $# -gt 0 ]]; do
     is_number "$1"
     key="$1"
@@ -131,14 +229,16 @@ function parse_input() {
       ;;
     esac
   done
-  echo -n "${STACK[@]}" "> "
 }
 
 function rpn() {
-  echo -n "> "
+  for var in "$@"; do
+    parse_args $var
+  done
+  echo -n "${STACK[@]}" "> "
   while read INPUT; do
     parse_input $INPUT
   done
 }
 
-rpn
+rpn $@
