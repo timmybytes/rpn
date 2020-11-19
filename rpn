@@ -8,7 +8,27 @@
 # bash_version   :5.0.18(1)-release
 #============================================================================
 
-source ./info.sh
+# TODO:
+# * help text
+# * getopts
+# * round
+# * binary
+# * factorial
+# * move
+# * swap
+# * drop
+# * dupl
+# * sqrt
+# * pi
+# ----------------
+# * customizations
+
+set -e
+set -u
+set -o pipefail
+
+source ./INFO
+source ./.rpnrc
 
 function is_number() {
   # Trim leading and extranneous 0s
@@ -27,8 +47,6 @@ function calc() {
   int_1=${STACK[0]}
   int_2=${STACK[1]}
   # ++ & -- should not replace first two digits, only first
-  # case $op in
-
   if [ "$op" = "^" ]; then
     op="*"
   elif [ "$op" = "++" ]; then
@@ -45,7 +63,7 @@ function calc() {
 
 function check_stack() {
   if [ "${#STACK[@]}" -lt "2" ] && [ "$1" != "++" ] && [ "$1" != "--" ]; then
-    echo -e "${RED}𐄂 ERROR${BASE}: The ${key} operation cannot be performed on a single number."
+    echo -e "${RED}𐄂 ERROR${BASE}: ${key} cannot be performed on a single number."
     echo "  Enter more numbers to calculate, or use a valid unary operator. "
     echo "  Type 'help' or 'usage' for more information."
     echo
@@ -59,9 +77,9 @@ function clear_stack() {
 }
 
 function parse_input() {
-  while [[ $# -gt 0 ]]; do
-    is_number "$1"
+  while [[ "$#" -gt 0 ]]; do
     key="$1"
+    is_number "$1"
     case $key in
     "q" | "Q" | "quit" | "exit")
       exit
@@ -86,6 +104,10 @@ function parse_input() {
       check_stack "$key"
       shift
       ;;
+    "help")
+      less ./HELP
+      shift
+      ;;
     *)
       shift
       ;;
@@ -97,7 +119,7 @@ function rpn() {
   # For piped input
   if [ -p /dev/stdin ]; then
     while read piped; do
-      parse_input $piped && echo -e "${BOLD}${STACK[@]}${BASE}"
+      parse_input $piped && echo -e "${STACK[@]}"
     done
   else
     # For arguments
@@ -105,9 +127,9 @@ function rpn() {
       parse_input $i
     done
     # For regular usage
-    echo -en "${BOLD}${STACK[@]}${BASE}" "> "
+    echo -en "${STACK[@]}" "> "
     while read INPUT; do
-      parse_input $INPUT && echo -en "${BOLD}${STACK[@]}${BASE}" "> "
+      parse_input $INPUT && echo -en "${STACK[@]}" "> "
     done
   fi
 }

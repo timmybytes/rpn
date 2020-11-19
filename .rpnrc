@@ -1,0 +1,6 @@
+# RPN Config
+
+RED='\033[0;31m'
+BOLD='\033[0;1m'
+UNDER='\033[0;4m'
+BASE='\033[0m'
