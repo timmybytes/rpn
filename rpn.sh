@@ -31,8 +31,7 @@
 #                * Do not publish your work on the internet.
 #============================================================================
 
-quit="q"
-num="^[0-9]+$"
+num="[-+]?[0-9]*\.?[0-9]+"
 STACK=()
 
 function help() {
@@ -40,6 +39,10 @@ function help() {
 }
 
 function is_number() {
+  # if [[ "${1}" -eq "" ]]; then
+  #   echo "ZERO"
+  #   shift
+  # fi
   if [[ "${1}" =~ $num ]]; then
     # Trim leading 0s before adding to STACK
     strip="${1#"${1%%[!0]*}"}"
@@ -50,22 +53,37 @@ function is_number() {
 
 function calc() {
   op=$1
-  if [ "$op" = "^" ]; then
-    op="*"
-  fi
   int_1=${STACK[0]}
   int_2=${STACK[1]}
+  if [ "$op" = "^" ]; then
+    op="*"
+  elif [ "$op" = "++" ]; then
+    op="+"
+    int_2=$int_1
+  elif [ "$op" = "--" ]; then
+    op="-"
+    int_2=$int_1
+  fi
   result=$(echo "${int_1} $op ${int_2}" | bc -l 2>/dev/null | sed '/\./ s/\.\{0,1\}0\{1,\}$//')
   STACK=("${STACK[@]:2}")
-  STACK=($result "${STACK[@]}")
+  # Prevent 0s from being added to STACK
+  if [ "$result" = "0" ]; then
+    :
+  else
+    STACK=($result "${STACK[@]}")
+  fi
 }
 
 function check_stack() {
-  if [ "${#STACK[@]}" -lt "2" ]; then
+  if [ "${#STACK[@]}" -lt "2" ] && [ "$1" != "++" ] && [ "$1" != "--" ]; then
     echo "Enter more numbers to calculate"
   else
     calc "$key"
   fi
+}
+
+function clear_stack() {
+  unset STACK
 }
 
 function parse_input() {
@@ -73,8 +91,7 @@ function parse_input() {
     is_number "$1"
     key="$1"
     case $key in
-    "$quit")
-      echo "Quitting..."
+    "q" | "Q" | "quit" | "exit")
       exit
       ;;
     "+")
@@ -93,6 +110,22 @@ function parse_input() {
       check_stack
       shift
       ;;
+    "%")
+      check_stack
+      shift
+      ;;
+    "++")
+      check_stack "$key"
+      shift
+      ;;
+    "--")
+      check_stack "$key"
+      shift
+      ;;
+    "clr")
+      clear_stack
+      shift
+      ;;
     *)
       shift
       ;;
@@ -101,7 +134,11 @@ function parse_input() {
   echo -n "${STACK[@]}" "> "
 }
 
-echo -n "> "
-while read INPUT; do
-  parse_input $INPUT
-done
+function rpn() {
+  echo -n "> "
+  while read INPUT; do
+    parse_input $INPUT
+  done
+}
+
+rpn
