@@ -84,6 +84,39 @@ function parse_input() {
     "q" | "Q" | "quit" | "exit")
       exit
       ;;
+    "swap")
+      temp="${STACK[0]}"
+      temp2="${STACK[1]}"
+      STACK=("${STACK[@]:2}")
+      STACK=(${STACK[@]:0:0} $temp ${STACK[@]:0})
+      STACK=(${STACK[@]:0:0} $temp2 ${STACK[@]:0})
+      shift
+      ;;
+    "fac")
+      factorial=1
+      for ((i = 1; i <= "${STACK[0]}"; i++)); do
+        factorial=$(($factorial * $i))
+      done
+      STACK=("${STACK[@]:1}")
+      STACK=(${STACK[@]:0:0} $factorial ${STACK[@]:0})
+      shift
+      ;;
+    "drop")
+      STACK=("${STACK[@]:1}")
+      shift
+      ;;
+    "bin")
+      binary=$(echo "obase=2;${STACK[0]}" | bc)
+      STACK=("${STACK[@]:1}")
+      STACK=($binary "${STACK[@]}")
+      shift
+      ;;
+    "dec")
+      decimal=$(echo "ibase=2;${STACK[0]}" | bc)
+      STACK=("${STACK[@]:2}")
+      STACK=($decimal "${STACK[@]}")
+      shift
+      ;;
     "usage")
       usage
       shift
@@ -124,6 +157,7 @@ function rpn() {
   else
     # For arguments
     for i in $@; do
+      # read $i
       parse_input $i
     done
     # For regular usage
