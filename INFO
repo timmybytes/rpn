@@ -18,7 +18,7 @@ function usage() {
     ""
     "┌──────────────────────────────────────────────────────────────┐"
     "│                                                              │"
-    "│         rpn - Reverse Polih Notation Calculator v${VERSION}       │"
+    "│      rpn - Reverse Polih Notation Calculator v${VERSION}          │"
     "│                                                              │"
     "│ USAGE:                                                       │"
     "│                                                              │"
@@ -41,6 +41,19 @@ function usage() {
   )
 
   printf "%s\n" "${txt[@]}"
+}
+
+function helpers_round() {
+  local round=(
+    "----------------------------------------------------"
+    "                      round"
+    "Usage: round decimal-place"
+    "Ex:"
+    "  2.3453 > round 2"
+    "  2.34 > "
+    "----------------------------------------------------"
+  )
+  printf "%s\n" "${round[@]}"
 }
 
 # * README

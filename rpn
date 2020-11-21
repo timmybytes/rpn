@@ -11,11 +11,7 @@
 # TODO:
 # * help text
 # * getopts
-# * round
-# * binary
-# * factorial
 # * move
-# * swap
 # * drop
 # * dupl
 # * sqrt
@@ -23,8 +19,11 @@
 # ----------------
 # * customizations
 
-set -e
-set -u
+#  -e  Exit immediately if a command exits with a non-zero status.
+# set -e
+# Instead...
+# trap 'do_something' ERR
+# set -u
 set -o pipefail
 
 source ./INFO
@@ -37,18 +36,28 @@ function is_number() {
     shift
   fi &&
     if [[ "${strip}" =~ $num ]]; then
+      # DONE Strip special characters, preserve floats
+      strip=$(echo $strip 2>/dev/null | tr -dc "0-9.")
       STACK+=("${strip}") || STACK+=("${1}")
       shift
     fi
+}
+
+function bin() {
+  # Translate 1st number in stack to binary
+  binary=$(echo "obase=2;${STACK[0]}" | bc)
+  STACK=("${STACK[@]:1}")
+  STACK=($binary "${STACK[@]}")
 }
 
 function calc() {
   op=$1
   int_1=${STACK[0]}
   int_2=${STACK[1]}
-  # ++ & -- should not replace first two digits, only first
+  # FIXME: ++ & -- should not replace first two digits, only first
   if [ "$op" = "^" ]; then
     op="*"
+  # FIXME: Either/Or for ++/-- only removing STACK=("${STACK[@]:1}") instead of 2
   elif [ "$op" = "++" ]; then
     op="+"
     int_2="1"
@@ -63,12 +72,12 @@ function calc() {
 
 function check_stack() {
   if [ "${#STACK[@]}" -lt "2" ] && [ "$1" != "++" ] && [ "$1" != "--" ]; then
-    echo -e "${RED}𐄂 ERROR${BASE}: ${key} cannot be performed on a single number."
-    echo "  Enter more numbers to calculate, or use a valid unary operator. "
+    # FIXME: Need coherent help pop-ups
+    echo -e "${RED}𐄂 ERROR${BASE}: ${1} cannot be performed on a single number."
     echo "  Type 'help' or 'usage' for more information."
     echo
   else
-    calc "$key"
+    calc "$1"
   fi
 }
 
@@ -78,9 +87,9 @@ function clear_stack() {
 
 function parse_input() {
   while [[ "$#" -gt 0 ]]; do
-    key="$1"
+    # key="$1"
     is_number "$1"
-    case $key in
+    case $1 in
     "q" | "Q" | "quit" | "exit")
       exit
       ;;
@@ -90,6 +99,31 @@ function parse_input() {
       STACK=("${STACK[@]:2}")
       STACK=(${STACK[@]:0:0} $temp ${STACK[@]:0})
       STACK=(${STACK[@]:0:0} $temp2 ${STACK[@]:0})
+      shift
+      ;;
+    "round")
+      # # FIXME: Inconsistent rounding/popping
+      # shift
+      # if [ -t "$1" ]; then
+      #   printf -v rounded "%.*f\n" "$1" "${STACK[0]}"
+      #   STACK=("${STACK[@]:2}")
+      #   STACK=($rounded "${STACK[@]}")
+      #   shift
+      # else
+      #   # FIXME: Need coherent help pop-ups
+      #   # helpers_round
+      #   # round defaults to 0 decimal points
+      #   printf -v rounded "%.*f\n" "0" "${STACK[0]}"
+      #   STACK=("${STACK[@]:0}")
+      #   STACK=($rounded "${STACK[@]}")
+      #   shift
+      # fi
+      # shift
+      if [ -t "$2" ]; then
+        echo "$2"
+      else
+        echo "arg empty"
+      fi
       shift
       ;;
     "fac")
@@ -102,18 +136,22 @@ function parse_input() {
       shift
       ;;
     "drop")
-      STACK=("${STACK[@]:1}")
+      # delete=$ARG
+      for target in "${delete[@]}"; do
+        for i in "${!STACK[@]}"; do
+          if [[ ${STACK[i]} = $target ]]; then
+            unset 'STACK[i]'
+          fi
+        done
+      done
       shift
       ;;
     "bin")
-      binary=$(echo "obase=2;${STACK[0]}" | bc)
-      STACK=("${STACK[@]:1}")
-      STACK=($binary "${STACK[@]}")
       shift
       ;;
     "dec")
       decimal=$(echo "ibase=2;${STACK[0]}" | bc)
-      STACK=("${STACK[@]:2}")
+      STACK=("${STACK[@]:1}")
       STACK=($decimal "${STACK[@]}")
       shift
       ;;
@@ -133,8 +171,9 @@ function parse_input() {
       check_stack
       shift
       ;;
+      # FIXME:
     "++" | "--")
-      check_stack "$key"
+      check_stack "$1"
       shift
       ;;
     "help")
@@ -162,9 +201,19 @@ function rpn() {
     done
     # For regular usage
     echo -en "${STACK[@]}" "> "
-    while read INPUT; do
-      parse_input $INPUT && echo -en "${STACK[@]}" "> "
-    done
+    # FIXME: Breaks more than 2 inputs at a time
+    if [ "$?" = 2 ]; then
+      while read -r INPUT ARG; do
+        ARG=$ARG
+        parse_input $INPUT && echo -en "${STACK[@]}" "> "
+      done
+    else
+      # FIXME:
+      while read -r INPUT; do
+        # ARG=$ARG
+        parse_input $INPUT && echo -en "${STACK[@]}" "> "
+      done
+    fi
   fi
 }
 
