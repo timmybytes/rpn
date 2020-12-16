@@ -9,20 +9,70 @@
 #=========================================================
 
 # Copy command-line arguments over to new array
+VERSION=0.0.1
 ARGS=($@)
 STACK=()
 NUM="[-+]?[0-9]*\.?[0-9]+"
-
-function clear_stack() {
-  STACK=()
-  PROMPT="${STACK[@]}> "
-}
 
 if [ ${#STACK[@]} -eq 0 ]; then
   PROMPT="${STACK[@]}> "
 elif ! [ ${#STACK[@]} -eq 0 ]; then
   PROMPT="${STACK[@]} > "
 fi
+
+function intro() {
+  local txt=(
+
+  )
+  printf "%s\n" "${txt[@]}"
+}
+
+function short_help() {
+  local txt=(
+    "┌─────────────────────────────────────────────┐"
+    "│                  rpn v0.0.1                 │"
+    "└─────────────────────────────────────────────┘"
+    ""
+    "Add numbers to the stack separated by a space"
+    ""
+    "VALID OPERATORS"
+    "  + : Add the first two numbers in the stack"
+    "      together."
+    "  - : Subtract the second number in the stack"
+    "      from the first."
+    "  ^ : Multiple the first number in the stack"
+    "      by the second. Substituted for '*'."
+    "  / : Divide the first number in the stack"
+    "      by the second."
+    ""
+    "USAGE:"
+    "  rpn "
+    "  Start in interactive mode (default) "
+    ""
+    "  rpn [expression]"
+    "  Evaluate expression "
+    ""
+    "  rpn [-option] [expression] "
+    "  Evaluate expression with options "
+    ""
+    "OPTIONS"
+    "  rpn [-v]"
+    "  Start in verbose mode"
+    ""
+    "  rpn [-h] "
+    "  Show basic usage "
+    ""
+    "  rpn [-help]"
+    "  Show full help file "
+    ""
+  )
+  printf "%s\n" "${txt[@]}"
+}
+
+function clear_stack() {
+  STACK=()
+  PROMPT="${STACK[@]}> "
+}
 
 function is_number() {
   # Trim leading and extranneous 0s
@@ -31,7 +81,8 @@ function is_number() {
     shift
   fi &&
     if [[ "${strip}" =~ $NUM ]]; then
-      strip=$(echo $strip 2>/dev/null | tr -dc "0-9.")
+      # strip=$(echo $strip 2>/dev/null | tr -dc "0-9.")
+      strip=$(printf "$strip") # sed 's/[^1-9.0-9]//g'
       STACK+=("${strip}") || STACK+=("${1}")
       PROMPT="${STACK[@]} > "
     fi
@@ -41,17 +92,9 @@ function calc() {
   op=$1
   int_1=${STACK[0]}
   int_2=${STACK[1]}
-  # FIXME: ++ & -- should not replace first two digits, only first
-  # if [ "$op" = "^" ]; then
-  #   op="*"
-  # # FIXME: Either/Or for ++/-- only removing STACK=("${STACK[@]:1}") instead of 2
-  # elif [ "$op" = "++" ]; then
-  #   op="+"
-  #   int_2="1"
-  # elif [ "$op" = "--" ]; then
-  #   op="-"
-  #   int_2="1"
-  # fi
+  if [ "$op" = "^" ]; then
+    op="*"
+  fi
   result=$(echo "${int_1} $op ${int_2}" | bc -l 2>/dev/null | sed '/\./ s/\.\{0,1\}0\{1,\}$//')
   STACK=("${STACK[@]:2}")
   STACK=($result "${STACK[@]}")
@@ -60,11 +103,18 @@ function calc() {
 
 function check_stack() {
   if [ "${#STACK[@]}" -lt "2" ] && [ "$1" != "++" ] && [ "$1" != "--" ]; then
-    # FIXME: Need coherent help pop-ups
     echo -e "${RED}𐄂 ERROR${BASE}: ${1} cannot be performed on a single number."
   else
     calc "$1"
   fi
+}
+
+function round() {
+  printf -v rounded "%.*f\n" "0" "${STACK[0]}"
+  echo "$rounded"
+  # STACK=("${STACK[@]:0}")
+  STACK=($rounded "${STACK[@]}")
+  # shift
 }
 
 function parse_input() {
@@ -76,7 +126,8 @@ function parse_input() {
       exit 0
       ;;
     "h")
-      echo "Help"
+      short_help
+      shift
       ;;
     "clr")
       clear_stack
@@ -84,6 +135,11 @@ function parse_input() {
       ;;
     "+" | "-" | "^" | "/" | "%")
       check_stack "$key"
+      shift
+      ;;
+    "round")
+      echo "Rounding"
+      round
       shift
       ;;
     *)
@@ -94,12 +150,9 @@ function parse_input() {
 }
 
 function get_input() {
-  ##########################################################################
-  # Parse options
-
-  ##########################################################################
-
-  # Read in from piped input, if present, and append to newly-created array
+  #=========================================================
+  # Read in from piped input, if present, and append to
+  # newly-created array
   if [ ! -t 0 ]; then
     readarray STDIN_ARGS </dev/stdin
     ARGS=($@ ${STDIN_ARGS[@]})
@@ -108,28 +161,34 @@ function get_input() {
   for ARG in "${ARGS[@]}"; do
     is_number $ARG
   done
-  # If piped input, print only final STACK
+  # If piped input, print only final STACK after
   if [ ! -t 0 ]; then
     echo "${STACK[@]}"
   fi
-  ##########################################################################
-  PROMPT="${STACK[@]} > "
+  #=========================================================
+  PROMPT="${STACK[@]}> "
   while read -p "${PROMPT}" INPUT; do
     parse_input $INPUT
   done
 }
 
-while getopts ":hi" arg; do
+while getopts ":hiv" arg; do
   case ${arg} in
   h)
-    echo "h called"
+    short_help
+    exit 0
     ;;
   i)
     echo "Interactive Mode"
-    get_input
+    ;;
+  v)
+    intro
     ;;
   ?)
+    # get_input
     echo "Invalid option: -${OPTARG}"
     ;;
   esac
 done
+
+get_input
